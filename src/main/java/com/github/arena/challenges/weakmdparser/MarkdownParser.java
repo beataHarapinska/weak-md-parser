@@ -1,8 +1,10 @@
 package com.github.arena.challenges.weakmdparser;
 
-import static com.github.arena.challenges.weakmdparser.TextFormatting.*;
-
 public class MarkdownParser {
+
+    public static final String NEW_LINE_SYMBOL = "\n";
+    public static final String UL_OPENING_TAG = "<ul>";
+    public static final String UL_CLOSING_TAG = "</ul>";
 
     private boolean activeList;
 
@@ -11,46 +13,34 @@ public class MarkdownParser {
     }
 
     public String parse(String markdown) {
-        String[] lines = markdown.split("\n");
+        String[] lines = markdown.split(NEW_LINE_SYMBOL);
         StringBuilder result = new StringBuilder();
 
-        for (String line : lines) {
-            line = applyTextFormatting(line);
-
-            if (isHeading(line)) {
-                line = parseToHeading(line);
-            } else if (isListItem(line)) {
-                line = parseToListItem(line);
-            } else {
-                line = parseToParagraph(line);
-            }
-            addUlTagToCreateList(result, line);
-
-            result.append(line);
-        }
-
-        if (activeList) {
-            result.append("</ul>");
+        for (int index = 0; index < lines.length; index++) {
+            String parsedLine = LineParser.fromString(lines[index])
+                    .insertTextFormattingTags()
+                    .insertLineFormattingTags()
+                    .toLine();
+            boolean isLastLine = (index == lines.length - 1);
+            addUnorderedListTagsToResult(result, parsedLine, isLastLine);
         }
         return result.toString();
     }
 
-    private boolean isListItem(String line) {
-        return line.startsWith("*");
+    void addUnorderedListTagsToResult(StringBuilder result, String theLine, boolean isLastIndex) {
+        result.append(insertUlTagToLine(theLine));
+        if (isLastIndex && activeList) result.append(UL_CLOSING_TAG);
     }
 
-    private boolean isHeading(String line) {
-        return line.startsWith("#");
-    }
-
-    private void addUlTagToCreateList(StringBuilder result, String line) {
+    private String insertUlTagToLine(String line) {
         if (isTheFirstListItem(line)) {
             activeList = true;
-            result.append("<ul>");
+            line = UL_OPENING_TAG + line;
         } else if (isTheFirstLineNotInListScope(line)) {
             activeList = false;
-            result.append("</ul>");
+            line = UL_CLOSING_TAG + line;
         }
+        return line;
     }
 
     private boolean isTheFirstLineNotInListScope(String line) {
@@ -58,30 +48,6 @@ public class MarkdownParser {
     }
 
     private boolean isTheFirstListItem(String theLine) {
-        return theLine.matches("(<li>).*")  && !activeList;
-    }
-
-    private String parseToHeading(String line) {
-        return wrapTextWithTag(line.substring(getNumberOfHashes(line) + 1), "h" + getNumberOfHashes(line));
-    }
-
-    private int getNumberOfHashes(String line) {
-        int index = 0;
-        while (line.charAt(index) == '#') {
-            index++;
-        }
-        return index;
-    }
-
-    private String parseToListItem(String line) {
-        return wrapTextWithTag(line.substring(2), "li");
-    }
-
-    private String parseToParagraph(String line) {
-        return wrapTextWithTag(line, "p");
-    }
-
-    private String wrapTextWithTag(String text, String tag) {
-        return String.format("<%s>%s</%s>", tag, text, tag);
+        return theLine.matches("(<li>).*") && !activeList;
     }
 }
