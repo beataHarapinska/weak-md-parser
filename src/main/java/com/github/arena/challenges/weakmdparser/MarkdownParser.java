@@ -1,83 +1,87 @@
 package com.github.arena.challenges.weakmdparser;
 
+import static com.github.arena.challenges.weakmdparser.TextFormatting.*;
+
 public class MarkdownParser {
+
+    private boolean activeList;
+
+    MarkdownParser() {
+        activeList = false;
+    }
 
     public String parse(String markdown) {
         String[] lines = markdown.split("\n");
         StringBuilder result = new StringBuilder();
-        boolean activeList = false;
 
         for (String line : lines) {
+            line = applyTextFormatting(line);
 
-            String theLine = parseHeading(line);
-
-            if (theLine == null) {
-                theLine = parseToListItem(line);
+            if (isHeading(line)) {
+                line = parseToHeading(line);
+            } else if (isListItem(line)) {
+                line = parseToListItem(line);
+            } else {
+                line = parseToParagraph(line);
             }
+            addUlTagToCreateList(result, line);
 
-            if (theLine == null) {
-                theLine = parseToParagraph(line);
-            }
-
-            if (isTheFirstListItem(theLine, activeList)) {
-                activeList = true;
-                result.append("<ul>");
-            } else if (isNotTheListItem(theLine, activeList)) {
-                activeList = false;
-                result.append("</ul>");
-            }
-            result.append(theLine);
+            result.append(line);
         }
 
         if (activeList) {
             result.append("</ul>");
         }
-
         return result.toString();
     }
 
-    private boolean isNotTheListItem(String theLine, boolean activeList) {
-        return !theLine.matches("(<li>).*") && activeList;
+    private boolean isListItem(String line) {
+        return line.startsWith("*");
     }
 
-    private boolean isTheFirstListItem(String theLine, boolean activeList) {
-        return theLine.matches("(<li>).*") && !theLine.matches("(<h).*") && !theLine.matches("(<p>).*") && !activeList;
+    private boolean isHeading(String line) {
+        return line.startsWith("#");
     }
 
-    private String parseHeading(String markdown) {
-        int count = 0;
-        for (int i = 0; markdown.charAt(i) == '#'; i++) {
-            count++;
+    private void addUlTagToCreateList(StringBuilder result, String line) {
+        if (isTheFirstListItem(line)) {
+            activeList = true;
+            result.append("<ul>");
+        } else if (isTheFirstLineNotInListScope(line)) {
+            activeList = false;
+            result.append("</ul>");
         }
-        return count == 0 ? null : wrapTextWithTag(markdown.substring(count + 1), "h" + count);
     }
 
-    private String parseToListItem(String markdown) {
-        if (markdown.startsWith("*")) {
-            String skipAsterisk = markdown.substring(2);
-            String listItemString = parseToBoldAndItalic(skipAsterisk);
-            return wrapTextWithTag(listItemString,  "li");
+    private boolean isTheFirstLineNotInListScope(String line) {
+        return !line.matches("(<li>).*") && activeList;
+    }
+
+    private boolean isTheFirstListItem(String theLine) {
+        return theLine.matches("(<li>).*")  && !activeList;
+    }
+
+    private String parseToHeading(String line) {
+        return wrapTextWithTag(line.substring(getNumberOfHashes(line) + 1), "h" + getNumberOfHashes(line));
+    }
+
+    private int getNumberOfHashes(String line) {
+        int index = 0;
+        while (line.charAt(index) == '#') {
+            index++;
         }
-        return null;
+        return index;
     }
 
-    private String parseToParagraph(String markdown) {
-        return wrapTextWithTag(parseToBoldAndItalic(markdown), "p");
+    private String parseToListItem(String line) {
+        return wrapTextWithTag(line.substring(2), "li");
     }
 
-    private String parseToBoldAndItalic(String markdown) {
-        return parseToItalic(parseToBold(markdown));
+    private String parseToParagraph(String line) {
+        return wrapTextWithTag(line, "p");
     }
 
-    private String parseToItalic(String workingOn) {
-        return workingOn.replaceAll("_(.+)_", "<em>$1</em>");
-    }
-
-    private String parseToBold(String markdown) {
-        return markdown.replaceAll("__(.+)__", "<strong>$1</strong>");
-    }
-
-    private String wrapTextWithTag(String text, String tag){
+    private String wrapTextWithTag(String text, String tag) {
         return String.format("<%s>%s</%s>", tag, text, tag);
     }
 }
