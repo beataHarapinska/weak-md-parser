@@ -11,8 +11,6 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 class MarkdownParserTest {
 
-    private final MarkdownParser markdownParser = new MarkdownParser();
-
     static Stream<Arguments> dataProvider() {
         return Stream.of(
                 arguments("This will be a paragraph", "<p>This will be a paragraph</p>"),
@@ -34,6 +32,6 @@ class MarkdownParserTest {
     @ParameterizedTest
     @MethodSource("dataProvider")
     public void shouldTranslateStringWithMarkdownSyntaxIntoHtmlString(String input, String expected) {
-        assertEquals(expected, markdownParser.parse(input));
+        assertEquals(expected, MarkdownParser.parse(input));
     }
 }

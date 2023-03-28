@@ -1,53 +1,64 @@
 package com.github.arena.challenges.weakmdparser;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MarkdownParser {
 
     public static final String NEW_LINE_SYMBOL = "\n";
     public static final String UL_OPENING_TAG = "<ul>";
     public static final String UL_CLOSING_TAG = "</ul>";
 
-    private boolean activeList;
-
-    MarkdownParser() {
-        activeList = false;
-    }
-
-    public String parse(String markdown) {
+    public static String parse(String markdown) {
         String[] lines = markdown.split(NEW_LINE_SYMBOL);
-        StringBuilder result = new StringBuilder();
+        int numberOfLines = lines.length;
+        List<String> result = new ArrayList<>();
 
-        for (int index = 0; index < lines.length; index++) {
-            String parsedLine = LineParser.fromString(lines[index])
+        for (String line : lines) {
+            String theLine = LineParser.fromString(line)
                     .insertTextFormattingTags()
                     .insertLineFormattingTags()
                     .toLine();
-            boolean isLastLine = (index == lines.length - 1);
-            addUnorderedListTagsToResult(result, parsedLine, isLastLine);
+            theLine = addUnorderedListTags(numberOfLines, result, theLine);
+            result.add(theLine);
         }
-        return result.toString();
+        return String.join("", result);
     }
 
-    void addUnorderedListTagsToResult(StringBuilder result, String theLine, boolean isLastIndex) {
-        result.append(insertUlTagToLine(theLine));
-        if (isLastIndex && activeList) result.append(UL_CLOSING_TAG);
-    }
-
-    private String insertUlTagToLine(String line) {
-        if (isTheFirstListItem(line)) {
-            activeList = true;
-            line = UL_OPENING_TAG + line;
-        } else if (isTheFirstLineNotInListScope(line)) {
-            activeList = false;
-            line = UL_CLOSING_TAG + line;
+    private static String addUnorderedListTags(int numberOfLines, List<String> result, String theLine) {
+        if (shouldAddUlOpeningTagToTheLine(result, theLine)) {
+            theLine = UL_OPENING_TAG + theLine;
         }
-        return line;
+        if (shouldAddUlClosingTagToTheLine(result, theLine)) {
+            theLine = UL_CLOSING_TAG + theLine;
+        }
+        if (shouldAddClosingTagAtTheEnd(result, theLine, numberOfLines)) {
+            theLine += UL_CLOSING_TAG;
+        }
+        return theLine;
     }
 
-    private boolean isTheFirstLineNotInListScope(String line) {
-        return !line.matches("(<li>).*") && activeList;
+    private static boolean shouldAddClosingTagAtTheEnd(List<String> result, String theLine, int lastIndex) {
+        return result.isEmpty()
+               ? isListItem(theLine)
+               : (result.size() == lastIndex - 1) && isListItem(theLine) && isPreviousLineListItem(result);
     }
 
-    private boolean isTheFirstListItem(String theLine) {
-        return theLine.matches("(<li>).*") && !activeList;
+    private static boolean shouldAddUlClosingTagToTheLine(List<String> result, String theLine) {
+        return !result.isEmpty() && !isListItem(theLine) && isPreviousLineListItem(result);
+    }
+
+    private static boolean shouldAddUlOpeningTagToTheLine(List<String> result, String theLine) {
+        return result.isEmpty()
+               ? isListItem(theLine)
+               : isListItem(theLine) && !isPreviousLineListItem(result);
+    }
+
+    private static boolean isPreviousLineListItem(List<String> result) {
+        return result.get(result.size() - 1).matches(".*(</li>)");
+    }
+
+    private static boolean isListItem(String line) {
+        return line.matches("(<li>).*");
     }
 }

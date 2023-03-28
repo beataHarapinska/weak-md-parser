@@ -33,8 +33,8 @@ public class LineFormatting {
         return wrapTextWithTag(line, "p");
     }
 
-    private static String wrapTextWithTag(String text, String tag) {
-        return String.format("<%s>%s</%s>", tag, text, tag);
+    private static String wrapTextWithTag(String text, String tagSymbol) {
+        return String.format("<%s>%s</%s>", tagSymbol, text, tagSymbol);
     }
 
     private static int getNumberOfHashes(String line) {
